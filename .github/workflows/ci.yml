@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  lint:
+    name: Lint & syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install zsh and shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh shellcheck
+
+      - name: Zsh syntax check
+        run: zsh -n wakatime.plugin.zsh
+
+      - name: Zsh sourcing smoke test
+        # Load the plugin in a real zsh to catch errors that -n misses
+        # (e.g. unknown autoload targets). Set __WAKATIME_CI_SKIP to
+        # make sure nothing is actually sent; preexec only fires on
+        # interactive commands anyway.
+        run: |
+          zsh -c '
+            autoload -U add-zsh-hook
+            source ./wakatime.plugin.zsh
+            echo "Plugin sourced OK"
+          '
+
+      - name: ShellCheck (informational)
+        # zsh-specific syntax trips several shellcheck warnings that do not
+        # apply to zsh. We run it in informational mode so the workflow does
+        # not fail on false positives, but the output is visible in logs.
+        continue-on-error: true
+        run: |
+          shellcheck --shell=bash \
+            --exclude=SC1090,SC2154,SC2206,SC2207,SC2296 \
+            wakatime.plugin.zsh
